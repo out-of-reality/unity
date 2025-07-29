@@ -1,0 +1,63 @@
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using TMPro; 
+
+public class LoginInputTab : MonoBehaviour
+{
+    public TMP_InputField emailInput;
+    public TMP_InputField passwordInput;
+    public Button loginButton;
+
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            // Get the currently focused object (if any)
+            GameObject currentSelectedObject = EventSystem.current.currentSelectedGameObject;
+
+            // Determine which input field to move to
+            if (currentSelectedObject == null || currentSelectedObject.name == emailInput.name)
+            {
+                // Focus the next input field, cycling back to email
+                if (passwordInput != null)
+                {
+                    EventSystem.current.SetSelectedGameObject(passwordInput.gameObject);
+                    passwordInput.ActivateInputField(); // Focus the field
+                }
+                else if (emailInput != null)
+                {
+                    EventSystem.current.SetSelectedGameObject(emailInput.gameObject);
+                    emailInput.ActivateInputField();
+                }
+            }
+            else if (currentSelectedObject.name == passwordInput.name)
+            {
+                if (emailInput != null)
+                {
+                    EventSystem.current.SetSelectedGameObject(emailInput.gameObject);
+                    emailInput.ActivateInputField();
+                }
+                else if (passwordInput != null)
+                {
+                    EventSystem.current.SetSelectedGameObject(passwordInput.gameObject);
+                    passwordInput.ActivateInputField();
+                }
+            }
+        }
+        else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+        {
+            if (!string.IsNullOrEmpty(emailInput.text) && !string.IsNullOrEmpty(passwordInput.text))
+            {
+                if (loginButton != null)
+                {
+                    loginButton.onClick.Invoke();
+                }
+                else
+                {
+                    Debug.LogWarning("Login button not assigned in the Inspector.");
+                }
+            }
+        }
+    }
+}

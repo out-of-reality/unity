@@ -1,0 +1,124 @@
+using System;
+using System.IO;
+using System.Net.Sockets;
+using UnityEngine;
+
+public class SocketClient : MonoBehaviour
+{
+    private TcpClient client;
+    private StreamReader reader;
+    private NetworkStream stream;
+
+    // Direccion IP y puerto deben coincidir con los del servidor Python
+    private string host = "127.0.0.1";
+    private int port = 65432;
+
+    // Fuerza de movimiento del personaje
+    public float forceAmount = 2500.0f;
+    public float forceAmountVertical = 5000.0f;
+
+    // Referencia al GameObject del personaje
+    public GameObject character;
+
+    // Referencia al Rigidbody del personaje
+    private Rigidbody rb;
+
+    void Start()
+    {
+        try
+        {
+            // Conectar con el servidor Python
+            client = new TcpClient(host, port);
+            stream = client.GetStream();
+            reader = new StreamReader(stream);
+            Debug.Log("Conectado al servidor Python.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error al conectar: {e.Message}");
+        }
+
+        // Obtener el componente Rigidbody del personaje
+        rb = character.GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            Debug.LogError("El GameObject no tiene un componente Rigidbody.");
+        }
+    }
+
+    void Update()
+    {
+        if (stream != null && stream.DataAvailable)
+        {
+            try
+            {
+                // Leer datos enviados por Python
+                string dataFromPython = reader.ReadLine();
+
+                // Convertir la cadena JSON en un objeto
+                if (!string.IsNullOrEmpty(dataFromPython))
+                {
+                    BodyData datos = JsonUtility.FromJson<BodyData>(dataFromPython);
+                    Debug.Log($"Punto 1: {datos.punto_medio_x}, {datos.punto_medio_y} - Z: {datos.punto_medio_z}");
+
+                    // Aplicar fuerzas para mover la bola de izquierda a derecha
+                    if (datos.punto_medio_x >= 0.60f && datos.punto_medio_x <= 1f)
+                    {
+                        // Aplicar fuerza a la izquierda (simulando tecla A)
+                        Debug.Log("Presionando tecla A (señal)");
+                        rb.AddForce(Vector3.left * forceAmount);
+                    }
+                    if (datos.punto_medio_x >= 0f && datos.punto_medio_x <= 0.40f)
+                    {
+                        // Aplicar fuerza a la derecha (simulando tecla D)
+                        Debug.Log("Presionando tecla D (señal)");
+                        rb.AddForce(Vector3.right * forceAmount);
+                    }
+
+                    // Aplicar fuerzas para mover la bola hacia adelante y atrás
+                    if (datos.punto_medio_z < 0f)
+                    {
+                        // Aplicar fuerza hacia atras (simulando tecla S)
+                        Debug.Log("Presionando tecla S (señal)");
+                        rb.AddForce(Vector3.back * forceAmountVertical);
+                    }
+                    if (datos.punto_medio_z > 0.2f)
+                    {
+                        // Aplicar fuerza hacia adalente (simulando tecla W)
+                        Debug.Log("Presionando tecla W (señal)");
+                        rb.AddForce(Vector3.forward * forceAmountVertical);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Error recibiendo datos: {e.Message}");
+            }
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        // Cerrar conexión al salir del juego
+        if (reader != null)
+        {
+            reader.Close();
+        }
+        if (stream != null)
+        {
+            stream.Close();
+        }
+        if (client != null)
+        {
+            client.Close();
+        }
+    }
+}
+
+[Serializable]
+public class BodyData
+{
+    public float punto_medio_x;
+    public float punto_medio_y;
+    public float punto_medio_z;
+}

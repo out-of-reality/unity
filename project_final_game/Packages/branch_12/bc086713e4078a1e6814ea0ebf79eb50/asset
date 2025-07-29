@@ -1,0 +1,31 @@
+using UnityEngine;
+using System.Collections.Generic;
+using SimpleJSON;
+using System.Linq;
+public class LandmarkManager : MonoBehaviour
+{
+    public Dictionary<string, Vector3> landmarks = new Dictionary<string, Vector3>();
+
+    public void UpdateLandmarksFromJson(string json)
+    {
+        var data = JSON.Parse(json);
+        foreach (KeyValuePair<string, JSONNode> kv in data)
+        {
+            var arr = kv.Value.AsArray;
+            if (arr.Count == 3)
+            {
+                landmarks[kv.Key] = new Vector3(arr[0].AsFloat, arr[1].AsFloat, arr[2].AsFloat);
+            }
+        }
+        //Debug.Log($"Landmarks updated: {string.Join(", ", landmarks.Select(kv => $"{kv.Key}: {kv.Value}"))}");
+    }
+
+    public Vector3 Get(string name)
+    {
+        if (!name.StartsWith("'") || !name.EndsWith("'"))
+        {
+            name = $"'{name}'"; // Agregar comillas simples si no están presentes
+        }
+        return landmarks.ContainsKey(name) ? landmarks[name] : Vector3.zero;
+    }
+}

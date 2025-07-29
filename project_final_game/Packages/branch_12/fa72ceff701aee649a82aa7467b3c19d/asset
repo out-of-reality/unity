@@ -1,0 +1,173 @@
+using System;
+using System.Text;
+using System.Net;
+using System.Net.Sockets;
+using UnityEngine;
+
+public class UdpClientScript : MonoBehaviour
+{
+    private UdpClient udpClient;
+    private IPEndPoint serverEndPoint;
+    private IPEndPoint clientEndPoint;
+    private bool isReceiving = true;
+
+    // Configuración del servidor
+    private string host = "127.0.0.1"; // Dirección IP del servidor
+    private int sendPort = 9999; // Puerto para enviar señales
+    private int receivePort = 9998; // Puerto para recibir puntos del cuerpo
+
+    // Referencia al GameObject del personaje
+    public GameObject character;
+
+    // Velocidad de movimiento del personaje
+    public float moveSpeed = 5.0f;
+
+    // LandmarkManager para manejar los puntos del cuerpo
+     public LandmarkManager landmarkManager;
+
+    void Start()
+    {
+        try
+        {
+            // Configurar cliente UDP para enviar y recibir
+            udpClient = new UdpClient(receivePort); // Escucha en el puerto de recepción
+            serverEndPoint = new IPEndPoint(IPAddress.Parse(host), sendPort);
+            clientEndPoint = new IPEndPoint(IPAddress.Any, receivePort);
+
+            // Iniciar recepción de datos en un hilo
+            isReceiving = true;
+            StartReceiving();
+            
+            Debug.Log("Cliente UDP configurado.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error configurando UDP: {e.Message}");
+        }
+    }
+
+    void Update()
+    {
+        // Aquí podrías agregar lógica adicional, si es necesario.
+    }
+
+    public void StartRecording()
+    {
+        try
+        {
+            string userId = "12345"; // ID del usuario, puede cambiar dinámicamente
+            string message = $"start {userId}";
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            udpClient.Send(data, data.Length, serverEndPoint);
+            Debug.Log("Señal 'start' enviada al servidor.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error enviando señal 'start': {e.Message}");
+        }
+    }
+
+    public void PauseRecording()
+    {
+        try
+        {
+            string message = "pause";
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            udpClient.Send(data, data.Length, serverEndPoint);
+            Debug.Log("Señal 'pause' enviada al servidor.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error enviando señal 'pause': {e.Message}");
+        }
+    }
+
+    public void ResumeRecording()
+    {
+        try
+        {
+            string message = "resume";
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            udpClient.Send(data, data.Length, serverEndPoint);
+            Debug.Log("Señal 'resume' enviada al servidor.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error enviando señal 'resume': {e.Message}");
+        }
+    }
+
+    public void StopRecording()
+    {
+        try
+        {
+            string message = "stop";
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            udpClient.Send(data, data.Length, serverEndPoint);
+            Debug.Log("Señal 'stop' enviada al servidor.");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error enviando señal 'stop': {e.Message}");
+        }
+    }
+
+    private async void StartReceiving()
+    {
+        await System.Threading.Tasks.Task.Run(() =>
+        {
+            while (isReceiving)
+            {
+                try
+                {
+                    byte[] data = udpClient.Receive(ref clientEndPoint);
+                    string receivedData = Encoding.UTF8.GetString(data);
+                    //Debug.Log($"Datos recibidos: {receivedData}");
+                    landmarkManager?.UpdateLandmarksFromJson(receivedData);
+                    // Procesar los datos recibidos
+                    // ProcessBodyData(receivedData);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"Error recibiendo datos: {e.Message}");
+                }
+            }
+        });
+    }
+
+    private void ProcessBodyData(string data)
+    {
+        try
+        {
+            // Parsear datos recibidos como una lista de puntos
+            string[] points = data.Trim(new char[] { '[', ']' }).Split(',');
+            if (points.Length % 3 == 0) // Cada punto tiene (x, y, z)
+            {
+                // Ejemplo: mover el personaje según el punto medio del cuerpo
+                float x = float.Parse(points[0]); // Coordenada X del primer punto
+                float y = float.Parse(points[1]); // Coordenada Y del primer punto
+
+                Debug.Log($"Punto recibido - X: {x}, Y: {y}");
+
+                if (x >= 0.75f)
+                {
+                    character.transform.Translate(Vector3.right * moveSpeed * Time.deltaTime);
+                }
+                else if (x <= 0.25f)
+                {
+                    character.transform.Translate(Vector3.left * moveSpeed * Time.deltaTime);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Error procesando datos del cuerpo: {e.Message}");
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        isReceiving = false; // Detener recepción de datos
+        udpClient.Close();
+    }
+}

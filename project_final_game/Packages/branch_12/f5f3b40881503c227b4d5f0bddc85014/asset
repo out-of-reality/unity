@@ -1,0 +1,228 @@
+
+using UnityEngine;
+using TMPro;
+using System.Collections.Generic;
+
+// Enum para definir los ángulos articulares
+public enum AnguloArticular
+{
+    CODO_DERECHO,
+    CODO_IZQUIERDO,
+    HOMBRO_DERECHO,
+    HOMBRO_IZQUIERDO,
+    RODILLA_DERECHA,
+    RODILLA_IZQUIERDA,
+    CADERA_DERECHA,
+    CADERA_IZQUIERDA,
+    TOBILLO_DERECHO,
+    TOBILLO_IZQUIERDO
+}
+
+public class LecturaPose : MonoBehaviour
+{
+    public LandmarkManager landmarkManager;
+    public TextMeshProUGUI statusText;
+
+    // Diccionario para mapear los ángulos articulares a sus puntos de referencia
+    private Dictionary<AnguloArticular, string[]> anguloPuntos = new Dictionary<AnguloArticular, string[]>()
+    {
+        { AnguloArticular.CODO_DERECHO, new string[] { "RIGHT_SHOULDER", "RIGHT_ELBOW", "RIGHT_WRIST" } },
+        { AnguloArticular.CODO_IZQUIERDO, new string[] { "LEFT_SHOULDER", "LEFT_ELBOW", "LEFT_WRIST" } },
+        { AnguloArticular.HOMBRO_DERECHO, new string[] { "RIGHT_HIP", "RIGHT_SHOULDER", "RIGHT_ELBOW" } },
+        { AnguloArticular.HOMBRO_IZQUIERDO, new string[] { "LEFT_HIP", "LEFT_SHOULDER", "LEFT_ELBOW" } },
+        { AnguloArticular.RODILLA_DERECHA, new string[] { "RIGHT_HIP", "RIGHT_KNEE", "RIGHT_ANKLE" } },
+        { AnguloArticular.RODILLA_IZQUIERDA, new string[] { "LEFT_HIP", "LEFT_KNEE", "LEFT_ANKLE" } },
+        { AnguloArticular.CADERA_DERECHA, new string[] { "RIGHT_SHOULDER", "RIGHT_HIP", "RIGHT_KNEE" } },
+        { AnguloArticular.CADERA_IZQUIERDA, new string[] { "LEFT_SHOULDER", "LEFT_HIP", "LEFT_KNEE" } },
+        { AnguloArticular.TOBILLO_DERECHO, new string[] { "RIGHT_KNEE", "RIGHT_ANKLE", "RIGHT_FOOT_INDEX" } },
+        { AnguloArticular.TOBILLO_IZQUIERDO, new string[] { "LEFT_KNEE", "LEFT_ANKLE", "LEFT_FOOT_INDEX" } }
+    };
+
+    // Diccionario para almacenar los valores de los ángulos calculados
+    private Dictionary<AnguloArticular, float> angulosCalculados = new Dictionary<AnguloArticular, float>();
+
+    public enum Pose
+    {
+        Ninguna,
+        SquatModificadoDePie,
+        TPose
+    }
+
+    private Pose currentPose = Pose.Ninguna;
+
+    private const float footFlatToleranceY = 0.08f; //Tolerancia para verificar si los puntos del pie (heel y foot_index) están "cercanos" en Y (pie plano)
+
+
+    void Start()
+    {
+        if (statusText != null)
+            statusText.text = "Esperando datos...";
+
+        // Inicializar todos los ángulos a cero
+        foreach (AnguloArticular angulo in System.Enum.GetValues(typeof(AnguloArticular)))
+        {
+            angulosCalculados[angulo] = 0f;
+        }
+    }
+    void Update()
+    {
+        if (landmarkManager == null || statusText == null) return;
+
+        if (landmarkManager.landmarks.Count > 0)
+        {
+            CalcularTodosLosAngulos();
+            // Detectar la pose actual
+            currentPose = DetectarPoseActual();
+
+            MostrarTextMesh();
+        }
+        else // Si no hay landmarks válidos
+        {
+            if (currentPose != Pose.Ninguna)
+            {
+                currentPose = Pose.Ninguna;
+                MostrarTextMesh();
+            }
+        }
+    }
+
+    private void CalcularTodosLosAngulos()
+    {
+        foreach (AnguloArticular angulo in System.Enum.GetValues(typeof(AnguloArticular)))
+        {
+            string[] puntos = anguloPuntos[angulo];
+
+            Vector3 puntoA = ObtenerLandmark(puntos[0], out bool encontradoA);
+            Vector3 puntoB = ObtenerLandmark(puntos[1], out bool encontradoB);
+            Vector3 puntoC = ObtenerLandmark(puntos[2], out bool encontradoC);
+
+            if (encontradoA && encontradoB && encontradoC)
+            {
+                puntoA.z /= 2f;
+                puntoB.z /= 2f;
+                puntoC.z /= 2f;
+                Vector3 ab = puntoA - puntoB;
+                Vector3 bc = puntoC - puntoB;
+                float anguloCalculado = Vector3.Angle(ab, bc);
+                angulosCalculados[angulo] = anguloCalculado;
+            }
+        }
+    }
+    /*private void CalcularTodosLosAngulos()
+    {
+        foreach (AnguloArticular angulo in System.Enum.GetValues(typeof(AnguloArticular)))
+        {
+            string[] puntos = anguloPuntos[angulo];
+
+            Vector3 puntoA = ObtenerLandmark(puntos[0], out bool encontradoA);
+            Vector3 puntoB = ObtenerLandmark(puntos[1], out bool encontradoB);
+            Vector3 puntoC = ObtenerLandmark(puntos[2], out bool encontradoC);
+
+            if (encontradoA && encontradoB && encontradoC)
+            {
+                // Convert to 2D vectors (only X and Y)
+                Vector2 ba = new Vector2(puntoA.x - puntoB.x, puntoA.y - puntoB.y);
+                Vector2 bc = new Vector2(puntoC.x - puntoB.x, puntoC.y - puntoB.y);
+                
+                float anguloCalculado = Vector2.Angle(ba, bc);
+                angulosCalculados[angulo] = anguloCalculado;
+            }
+        }
+    }*/
+
+    private Vector3 ObtenerLandmark(string nombreLandmark, out bool encontrado)
+    {
+        Vector3 resultado = landmarkManager.Get(nombreLandmark);
+        encontrado = resultado != Vector3.zero;
+        if (!encontrado)
+        {
+            Debug.LogWarning($"Landmark '{nombreLandmark}' no encontrado o es Vector3.zero");
+        }
+        return resultado;
+    }
+
+
+    private void MostrarTextMesh()
+    {
+        statusText.text = $"Pose: {currentPose}";
+        // Statustext mostrará los angulos de codos y hombrs todos juntos sin la pose
+        /*statusText.text = $"Codo Derecho: {angulosCalculados[AnguloArticular.CODO_DERECHO]:F1}°\n" +
+                        $"Codo Izquierdo: {angulosCalculados[AnguloArticular.CODO_IZQUIERDO]:F1}°\n" +
+                        $"Hombro Derecho: {angulosCalculados[AnguloArticular.HOMBRO_DERECHO]:F1}°\n" +
+                        $"Hombro Izquierdo: {angulosCalculados[AnguloArticular.HOMBRO_IZQUIERDO]:F1}°\n";*/
+    }
+
+    private void RegistrarTodosLosAngulos()
+    {
+        string mensaje = "Ángulos articulares:\n";
+        foreach (AnguloArticular angulo in System.Enum.GetValues(typeof(AnguloArticular)))
+        {
+            mensaje += $"{angulo}: {angulosCalculados[angulo]:F1}°\n";
+        }
+        Debug.Log(mensaje);
+    }
+
+    private bool EnRango(float angulo, float min, float max)
+    {
+        return angulo >= min && angulo <= max;
+    }
+    private bool PiesEnSuelo()
+    {
+        Vector3 rHeel = ObtenerLandmark("RIGHT_HEEL", out bool rHeelFound);
+        Vector3 lHeel = ObtenerLandmark("LEFT_HEEL", out bool lHeelFound);
+        Vector3 rFootIndex = ObtenerLandmark("RIGHT_FOOT_INDEX", out bool rFootIndexFound);
+        Vector3 lFootIndex = ObtenerLandmark("LEFT_FOOT_INDEX", out bool lFootIndexFound);
+
+        // Deben encontrarse todos los puntos necesarios
+        if (!rHeelFound || !lHeelFound || !rFootIndexFound || !lFootIndexFound) return false;
+
+        // Chequear si el talón y el índice del pie están "cercanos" en Y en cada lado
+        bool rightFootFlat = Mathf.Abs(rHeel.y - rFootIndex.y) < footFlatToleranceY;
+        bool leftFootFlat = Mathf.Abs(lHeel.y - lFootIndex.y) < footFlatToleranceY;
+
+        // Consideramos pies en el suelo si ambos pies están planos y a poca distancia en Y
+        if (Mathf.Abs( rHeel.y - lHeel.y) > (5*footFlatToleranceY)) return false;
+
+        return rightFootFlat && leftFootFlat;
+    }
+
+    //Poses
+    private Pose DetectarPoseActual()
+    {
+        if (IsItTPose()) return Pose.TPose;
+        if (IsItStandingSquat()) return Pose.SquatModificadoDePie;
+        return Pose.Ninguna;
+    }
+    private bool IsItStandingSquat()
+    {
+        bool rodillaDerechaOk = EnRango(angulosCalculados[AnguloArticular.RODILLA_DERECHA], 10f, 90f); 
+        bool rodillaIzquierdaOk = EnRango(angulosCalculados[AnguloArticular.RODILLA_IZQUIERDA], 10f, 90f); 
+        bool caderaDerechaOk = EnRango(angulosCalculados[AnguloArticular.CADERA_DERECHA], 10f, 90f); 
+        bool caderaIzquierdaOk = EnRango(angulosCalculados[AnguloArticular.CADERA_IZQUIERDA], 10f, 90f);  
+        return rodillaDerechaOk && rodillaIzquierdaOk &&
+               caderaDerechaOk && caderaIzquierdaOk;
+    }
+    private bool IsItTPose()
+    {
+        bool codoDerechoOk = EnRango(angulosCalculados[AnguloArticular.CODO_DERECHO], 125f, 180f);
+        bool codoIzquierdoOk = EnRango(angulosCalculados[AnguloArticular.CODO_IZQUIERDO], 125f, 180f);
+        bool hombroDerechoOk = EnRango(angulosCalculados[AnguloArticular.HOMBRO_DERECHO], 65f, 105f);
+        bool hombroIzquierdoOk = EnRango(angulosCalculados[AnguloArticular.HOMBRO_IZQUIERDO], 65f, 105f);
+        bool rodillaDerechaOk = EnRango(angulosCalculados[AnguloArticular.RODILLA_DERECHA], 130f, 180f);
+        bool rodillaIzquierdaOk = EnRango(angulosCalculados[AnguloArticular.RODILLA_IZQUIERDA], 130f, 180f);
+        bool caderaDerechaOk = EnRango(angulosCalculados[AnguloArticular.CADERA_DERECHA], 130f, 180f); 
+        bool caderaIzquierdaOk = EnRango(angulosCalculados[AnguloArticular.CADERA_IZQUIERDA], 130f, 180f);
+
+        return codoDerechoOk && codoIzquierdoOk &&
+               hombroDerechoOk && hombroIzquierdoOk &&
+               rodillaDerechaOk && rodillaIzquierdaOk &&
+               caderaDerechaOk && caderaIzquierdaOk;
+    }
+
+    public void Angles()
+    {
+        RegistrarTodosLosAngulos();
+        Debug.Log("Pies en el suelo: " + (PiesEnSuelo() ? "Sí" : "No"));
+        Debug.Log($"Pose: {currentPose}"); 
+    }
+}

@@ -1,0 +1,3 @@
+repository "project_final_game@final_project_unity@cloud"
+  path "/"
+    smartbranch "/main"

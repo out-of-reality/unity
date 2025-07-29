@@ -1,0 +1,83 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
+using TMPro;
+
+public class LoginScript : MonoBehaviour
+{
+    public TMP_InputField emailInput;
+    public TMP_InputField passwordInput;
+
+    public void Login()
+    {
+        string email = emailInput.text;
+        string password = passwordInput.text;
+
+        StartCoroutine(LoginCoroutine(email, password));
+    }
+    public TMP_Text errorMessage;
+
+    private string odooUrl = "http://127.0.0.1:17069/out_of_reality_api/login";
+
+    private void Start()
+    {
+        errorMessage.gameObject.SetActive(false);
+    }
+
+    IEnumerator LoginCoroutine(string email, string password)
+    {
+        string payload = JsonUtility.ToJson(new LoginData { username = email, password = password });
+
+        using (UnityWebRequest www = new UnityWebRequest(odooUrl, "POST"))
+        {
+            byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(payload);
+            www.uploadHandler = new UploadHandlerRaw(jsonToSend);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                string jsonResponse = www.downloadHandler.text;
+                APIResponse response = JsonUtility.FromJson<APIResponse>(jsonResponse);
+
+                if (!string.IsNullOrEmpty(response.access_token))
+                {
+                    PlayerPrefs.SetString("ACCESS_TOKEN", response.access_token);
+                    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+                }
+                else
+                {
+                    ShowErrorMessage("Credenciales incorrectas.");
+                }
+            }
+            else
+            {
+                ShowErrorMessage("Error: " + www.error);
+            }
+        }
+    }
+
+    private void ShowErrorMessage(string message)
+    {
+        errorMessage.text = message;
+        errorMessage.gameObject.SetActive(true);
+    }
+}
+[System.Serializable]
+public class LoginData
+{
+    public string username;
+    public string password;
+}
+
+[System.Serializable]
+public class APIResponse
+{
+    public int id;
+    public string name;
+    public string email;
+    public string access_token;
+}

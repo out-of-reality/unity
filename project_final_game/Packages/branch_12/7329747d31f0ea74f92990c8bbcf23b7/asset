@@ -1,0 +1,193 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
+
+public class PlayerControllerBallBalance : MonoBehaviour
+{
+    public Rigidbody rb;
+    public float moveSpeed = 10f;
+
+    private float xInput;
+    private float zInput;
+
+    // Counter Coin
+    private int score;
+    public TextMeshProUGUI score_text;
+
+    // Canvas que se muestran a lo largo de la partida 
+    public GameObject victoryCanvas; // Referencia al Canvas de la pantalla de victoria
+    public GameObject coinPopupCanvas; // Referencia al Canvas de la ventana emergente
+    
+    // Referencia al texto del temporizador en el popup
+    public TextMeshProUGUI timerText;
+    private float countdownTime = 5f;
+    private bool isPopupActive = false;
+
+    // Referencia al mensaje de "posición no alcanzada"
+    public GameObject penaltyMessagePanel;
+
+    // Tiempo que se mostrará el mensaje de penalización
+    private float penaltyMessageDuration = 3f;
+
+    // Referencia al mensaje de "posición realizada correctamente"
+    public GameObject successMessagePanel;
+
+    // Tiempo que se mostrará el mensaje de confirmación
+    private float successMessageDuration = 3f; 
+    
+    // Start is called before the first frame update
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        score = 0;
+    }   
+
+    // Update is called once per frame
+    void Update()
+    {
+        ProcessInputs();
+        CheckPosition();
+        UpdatePopupTimer();
+    }
+
+    private void FixedUpdate()
+    {
+        Move();
+    }
+
+    private void ProcessInputs()
+    {
+        xInput = Input.GetAxis("Horizontal");
+        zInput = Input.GetAxis("Vertical");
+    }
+
+    private void Move()
+    {
+        rb.AddForce(new Vector3(xInput, 0f, zInput) * moveSpeed);
+    }
+
+
+    // Funcion para evaluar colisiones
+    private void OnTriggerEnter(Collider other)
+    {
+        // Verificar si el objeto con el que colisiona tiene la etiqueta "coin"
+        if (other.gameObject.CompareTag("coin"))
+        {
+           
+            // Registrar en consola el nombre del objeto con el que colisiona
+            Debug.Log("Colision con una moneda: " + other.gameObject.name);
+
+            // incrementar valor cantidad moneda
+            score=score+1;
+            score_text.text = score.ToString();
+            
+            // Pausar el juego y mostrar el popup
+            Time.timeScale = 0f; // Detener el tiempo
+            coinPopupCanvas.SetActive(true); // Mostrar la ventana emergente
+
+            // Iniciar temporizador
+            countdownTime = 5f;
+            isPopupActive = true;
+            Debug.Log("Valor booleano: " + isPopupActive);
+
+            Destroy(other.gameObject); // Esto destruye la moneda al colisionar
+        }
+
+        // Verificar si el objeto con el que colisiona tiene la etiqueta "goal"
+        if (other.gameObject.CompareTag("goal"))
+        {
+            // Activamos el Canvas2 para mostrar la pantalla de victoria
+            victoryCanvas.SetActive(true);
+            
+            Time.timeScale = 0.5f; // Detener el tiempo
+
+        }
+    }
+
+    // Funcion para cerrar el popup y continuar el juego (boton de confirmacion)
+    public void CloseCoinPopup()
+    {
+        coinPopupCanvas.SetActive(false); // Ocultar el popup
+        Time.timeScale = 1f; // Reanudar el tiempo
+        
+        // Detener el contador
+        isPopupActive = false;
+        
+        // incrementar valor cantidad moneda
+        score=score+1;
+        score_text.text = score.ToString();
+
+        // Mostrar popup de éxito
+        ShowSuccessMessage();
+    }
+
+    // Funcion para cerrar el popup y continuar el juego (boton de rechazo)
+    public void RejectCoinPopup()
+    {
+        coinPopupCanvas.SetActive(false); // Ocultar el popup
+        Time.timeScale = 1f; // Reanudar el tiempo
+
+        // Detener el contador
+        isPopupActive = false;
+        
+        //Decrementar valor cantidad moneda
+        score=score-1;
+        score_text.text = score.ToString();
+    } 
+
+    // Funcion para actualizar el temporizador del popup
+    private void UpdatePopupTimer()
+    {
+        if (isPopupActive)
+        {
+            Debug.Log("Tiempo restante: " + countdownTime);
+            countdownTime -= Time.unscaledDeltaTime; // Reducir el tiempo restante
+            timerText.text = "Tiempo restante: " + Mathf.Ceil(countdownTime).ToString(); // Mostrar el tiempo restante
+
+            if (countdownTime <= 0)
+            {
+                ShowPenaltyMessage();
+                RejectCoinPopup(); // Cerrar el popup automáticamente si el tiempo se agota
+                isPopupActive = false;
+            }
+        }
+    }
+
+    // Mostrar mensaje de penalización
+    private void ShowPenaltyMessage()
+    {
+        penaltyMessagePanel.SetActive(true); // Mostrar el panel de penalización
+        StartCoroutine(HidePenaltyMessageAfterDelay()); // Ocultar después de unos segundos
+    }
+
+    private IEnumerator HidePenaltyMessageAfterDelay()
+    {
+        yield return new WaitForSecondsRealtime(penaltyMessageDuration); // Esperar el tiempo en tiempo real
+        penaltyMessagePanel.SetActive(false); // Ocultar el panel
+    }
+
+    // Mostrar mensaje de éxito
+    private void ShowSuccessMessage()
+    {
+        successMessagePanel.SetActive(true); // Mostrar el panel de éxito
+        StartCoroutine(HideSuccessMessageAfterDelay()); // Ocultar después de unos segundos
+    }
+
+    private IEnumerator HideSuccessMessageAfterDelay()
+    {
+        yield return new WaitForSecondsRealtime(successMessageDuration); // Esperar el tiempo en tiempo real
+        successMessagePanel.SetActive(false); // Ocultar el panel
+    }
+
+    // Funcion para verificar la posición en Y del jugador
+    private void CheckPosition()
+    {
+        if (transform.position.y <= -115)
+        {
+            victoryCanvas.SetActive(true);
+        }
+    }
+
+}

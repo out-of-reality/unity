@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Login/LoginMainScene.unity
+    guid: aebf7a67e6ce8d91f8b2a8e602aa29b9
+  - enabled: 1
+    path: Assets/Scenes/MainMenu/MainMenuScene.unity
+    guid: dd1317e913b0bcdb9a569bc3f0a6e67c
+  - enabled: 0
+    path: Assets/Scenes/ScenesFaceID/MainMenuScene.unity
+    guid: 821f1154e08b67b4ca3d848acb037394
+  - enabled: 0
+    path: Assets/Scenes/BallBalance.unity
+    guid: 7be8dca891bc1d345995dbefc748746b
+  - enabled: 1
+    path: Assets/Scenes/BallBalance2.unity
+    guid: b6faeb776ff5797fcb7b0cfc5dc2fd9f
+  m_configObjects: {}

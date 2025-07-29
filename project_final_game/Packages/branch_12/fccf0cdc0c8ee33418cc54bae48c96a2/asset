@@ -1,0 +1,27 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class ImpulseArrow : MonoBehaviour
+{
+    //Este script es empleado para impulsar la bola cuando entra en contacto con la flecha azul. Lo cual permite que la bola pueda
+    //llegar a la otra plataforma.
+    
+    public float impulseStrength = 500f; // Fuerza del impulso
+    public Vector3 impulseDirection = new Vector3(0, 1, 1); // Direccion del impulso (diagonal hacia arriba y adelante)
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Verificar si el objeto que colisiona es la bola
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            Rigidbody rb = collision.gameObject.GetComponent<Rigidbody>();
+
+            if (rb != null)
+            {
+                // Aplicar una fuerza en la direccion indicada, multiplicada por la fuerza del impulso
+                rb.AddForce(impulseDirection.normalized * impulseStrength, ForceMode.Impulse);
+            }
+        }
+    }
+}

@@ -1,0 +1,40 @@
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.Video;
+
+public class GameStartManager : MonoBehaviour
+{
+    // Referencias a los elementos del Canvas
+    public GameObject startCanvas; // Canvas de inicio
+    public VideoPlayer videoPlayer; // Componente VideoPlayer
+    public Button startButton; // Botón para iniciar el juego
+
+    void Start()
+    {
+        // Asegurarse de que el Canvas de inicio está activo
+        startCanvas.SetActive(true);
+
+        // Pausar el tiempo del juego hasta que se inicie
+        Time.timeScale = 0f;
+
+        // Reproducir el video demostrativo al inicio
+        if (videoPlayer != null)
+        {
+            videoPlayer.Play();
+        }
+
+        // Configurar el evento del botón
+        startButton.onClick.AddListener(StartGame);
+    }
+
+    // Función para iniciar el juego
+    private void StartGame()
+    {
+        // Ocultar el Canvas de inicio
+        startCanvas.SetActive(false);
+
+        // Reanudar el tiempo del juego
+        Time.timeScale = 1f;
+    }
+}
+
